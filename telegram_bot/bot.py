@@ -13,12 +13,12 @@ from aiogram.types import CallbackQuery, ContentType, InlineKeyboardMarkup, Inli
 from aiogram.utils import executor
 
 from app.card_comment.card_comment import CardComment
-from app.card_comment.storage.in_memory_storage import InMemoryCommentStorage
+from app.card_comment.storage.pickle_storage import PickleCommentStorage
 from app.contact_card import ContactCard
+from app.contact_card.storage.pickle_storage import PickleContactStorage
 from app.usecases.get_social_network import get_social_networks
 from middleware import TypingMiddleware, FSMFinishMiddleware
 
-from app.contact_card.storage.in_memory_storage import InMemoryContactStorage
 from telegram_bot.state_groups import CreateCardSG, AddCardCommentSG
 from telegram_bot.usecases.generate_qr_code import TelegramContactCardQRGenerator
 from telegram_bot.usecases.get_contact_card_message import get_contact_card_message
@@ -31,8 +31,8 @@ dp.middleware.setup(TypingMiddleware())
 dp.middleware.setup(FSMFinishMiddleware(dispatcher=dp))
 
 
-contacts_storage = InMemoryContactStorage()
-comments_storage = InMemoryCommentStorage()
+contacts_storage = PickleContactStorage()
+comments_storage = PickleCommentStorage()
 
 
 @dp.message_handler(CommandStart())
@@ -72,6 +72,8 @@ async def comment_callback(callback_query: CallbackQuery, state: FSMContext):
 
     await callback_query.message.answer("Напишите комментарий к визитке.")
     await state.set_state(AddCardCommentSG.get_comment)
+
+    await callback_query.answer()
 
 
 @dp.message_handler(state=AddCardCommentSG.get_comment)
