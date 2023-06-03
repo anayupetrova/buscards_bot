@@ -11,6 +11,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import CommandStart
 from aiogram.types import CallbackQuery, ContentType, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils import executor
+from pydantic import ValidationError
 
 from app.card_comment.card_comment import CardComment
 from app.card_comment.storage.pickle_storage import PickleCommentStorage
@@ -269,15 +270,20 @@ async def handle_photo(message: types.Message, state: FSMContext):
     photo_id = message.photo[-1].file_id
     await message.reply("Отлично! Твоя визитка готова!")
     state_data = await state.get_data()
-    contact_card = ContactCard(
-        name=state_data['name'],
-        company=state_data['company'],
-        position=state_data['position'],
-        about=state_data['about'],
-        email=state_data.get('email'),
-        social_links=state_data.get('social_links', []),
-        avatar_id=photo_id
-    )
+    try:
+        contact_card = ContactCard(
+            name=state_data['name'],
+            company=state_data['company'],
+            position=state_data['position'],
+            about=state_data['about'],
+            email=state_data.get('email'),
+            social_links=state_data.get('social_links', []),
+            avatar_id=photo_id
+        )
+    except ValidationError as exc:
+        await message.reply(
+            f"Ошибка при создании визитки. Попробуйте еще раз, учтя ошибки: {exc}"
+        )
     contacts_storage.put(contact_card)
     card_message = get_contact_card_message(
         contact_card,
