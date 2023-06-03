@@ -17,7 +17,6 @@ from app.usecases.get_social_network import get_social_networks
 from middleware import TypingMiddleware, FSMFinishMiddleware
 
 from app.contact_card.storage.in_memory_storage import InMemoryContactStorage
-from app.user.in_memory_storage import InMemoryUserStorage
 from telegram_bot.state_groups import CreateCardSG
 from telegram_bot.usecases.generate_qr_code import TelegramContactCardQRGenerator
 from telegram_bot.usecases.get_contact_card_message import get_contact_card_message
@@ -31,7 +30,6 @@ dp.middleware.setup(FSMFinishMiddleware(dispatcher=dp))
 
 
 contacts_storage = InMemoryContactStorage()
-users_storage = InMemoryUserStorage()
 
 
 @dp.message_handler(CommandStart())
