@@ -3,3 +3,4 @@ aiogram
 pydantic
 pydantic[email]
 uuid
+segno

@@ -11,3 +11,8 @@ class CreateCardSG(StatesGroup):
     get_social_network = State()
     get_social_network_link = State()
     get_photo = State()
+
+
+class AddCardCommentSG(StatesGroup):
+    """Группа состояний aiogram добавления комментария к карточке"""
+    get_comment = State()

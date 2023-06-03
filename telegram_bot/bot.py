@@ -12,12 +12,14 @@ from aiogram.dispatcher.filters import CommandStart
 from aiogram.types import CallbackQuery, ContentType, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils import executor
 
+from app.card_comment.card_comment import CardComment
+from app.card_comment.storage.in_memory_storage import InMemoryCommentStorage
 from app.contact_card import ContactCard
 from app.usecases.get_social_network import get_social_networks
 from middleware import TypingMiddleware, FSMFinishMiddleware
 
 from app.contact_card.storage.in_memory_storage import InMemoryContactStorage
-from telegram_bot.state_groups import CreateCardSG
+from telegram_bot.state_groups import CreateCardSG, AddCardCommentSG
 from telegram_bot.usecases.generate_qr_code import TelegramContactCardQRGenerator
 from telegram_bot.usecases.get_contact_card_message import get_contact_card_message
 
@@ -30,6 +32,7 @@ dp.middleware.setup(FSMFinishMiddleware(dispatcher=dp))
 
 
 contacts_storage = InMemoryContactStorage()
+comments_storage = InMemoryCommentStorage()
 
 
 @dp.message_handler(CommandStart())
@@ -47,13 +50,57 @@ async def start_command(message: types.Message):
             return
         contact_card = contacts_storage.get(contact_card_uuid)
         await message.reply(f"{contact_card.name} поделился с тобой визиткой.")
-        card_message = get_contact_card_message(contact_card)
+        card_message = get_contact_card_message(
+            contact_card,
+            comments_storage.get(contact_card.id, message.from_user.id)
+        )
         await message.reply_photo(
             photo=card_message['photo'], caption=card_message['text'], reply_markup=card_message['reply_markup']
         )
     else:
-        await message.reply(f"Здравствуйте!")
-        await message.reply(message.from_user.id)
+        await message.reply(f"Привет! Для создания карточки, введите команду /create_card")
+
+
+@dp.callback_query_handler(lambda c: re.match(r'^comment_.+$', c.data))
+async def comment_callback(callback_query: CallbackQuery, state: FSMContext):
+    """
+    Обработка нажатия на кнопку "Добавить комментарий".
+    """
+
+    contact_id = re.search(r'comment_(.+)', callback_query.data).group(1)
+    await state.update_data(contact_id=uuid.UUID(contact_id))
+
+    await callback_query.message.answer("Напишите комментарий к визитке.")
+    await state.set_state(AddCardCommentSG.get_comment)
+
+
+@dp.message_handler(state=AddCardCommentSG.get_comment)
+async def get_comment(message: types.Message, state: FSMContext):
+    """
+    Обработка комментария к визитке.
+    """
+
+    comment = message.text
+    state_data = await state.get_data()
+    contact_id = state_data.get('contact_id')
+    comments_storage.put(
+        CardComment(
+            card_id=contact_id,
+            user_id=message.from_user.id,
+            text=comment
+        )
+    )
+
+    contact_card = contacts_storage.get(contact_id)
+    card_message = get_contact_card_message(
+        contact_card,
+        comments_storage.get(contact_card.id, message.from_user.id)
+    )
+    await message.reply_photo(
+        photo=card_message['photo'], caption=card_message['text'], reply_markup=card_message['reply_markup']
+    )
+
+    await state.finish()
 
 
 @dp.message_handler(commands=['create_card'])
@@ -230,7 +277,10 @@ async def handle_photo(message: types.Message, state: FSMContext):
         avatar_id=photo_id
     )
     contacts_storage.put(contact_card)
-    card_message = get_contact_card_message(contact_card)
+    card_message = get_contact_card_message(
+        contact_card,
+        comments_storage.get(contact_card.id, message.from_user.id)
+    )
     await message.reply_photo(
         photo=card_message['photo'], caption=card_message['text'], reply_markup=card_message['reply_markup']
     )
