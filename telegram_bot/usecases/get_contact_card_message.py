@@ -14,6 +14,10 @@ def get_contact_card_message(contact: ContactCard, comment: Optional[CardComment
     message = f'Имя: {contact.name}\n'
     message += f'Компания: {contact.company}\n'
     message += f'Должность: {contact.position}\n'
+
+    if contact.email:
+        message += f'Email: {contact.email}\n'
+
     message += f'О себе: {contact.about}\n'
 
     if comment:
