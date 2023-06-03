@@ -284,6 +284,8 @@ async def handle_photo(message: types.Message, state: FSMContext):
         await message.reply(
             f"Ошибка при создании визитки. Попробуйте еще раз, учтя ошибки: {exc}"
         )
+        await state.finish()
+        return
     contacts_storage.put(contact_card)
     card_message = get_contact_card_message(
         contact_card,
